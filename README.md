@@ -11,14 +11,15 @@ login.
 
 ```mermaid
 flowchart LR
-    Visitor["Blog visitor"] -- "HTTPS" --> CF
-    Admin["Admin laptop<br/>ssh + cloudflared"] -- "Access login,<br/>then SSH" --> CF
+    Visitor["Blog visitor"] -- "HTTPS" --> Edge
+    Admin["Admin laptop<br/>ssh + cloudflared"] -- "SSH" --> Access
 
-    subgraph CF["Cloudflare edge"]
-        Access["Access policy<br/>(SSH hostname only)"]
+    subgraph CF["Cloudflare"]
+        Edge["Blog hostname<br/>(HTTPS ends here)"]
+        Access["SSH hostname<br/>(Access login first)"]
     end
 
-    subgraph Hetzner["Hetzner Cloud server — firewall: no inbound rules"]
+    subgraph Hetzner["Hetzner Cloud server: firewall with no inbound rules"]
         Tunnel["cloudflared"]
         Proxy["proxy :8080<br/>(loopback)"]
         Ghost["Ghost"]
@@ -154,9 +155,9 @@ explicitly.
 - **Access step fails:** enable Zero Trust on the Cloudflare account once (see above).
 - **Server type not available:** Hetzner changes its line-up; set `SERVER_TYPE` and `SERVER_LOCATION` in `.env`.
 - **Blog does not come up within 15 minutes:** the server has no inbound
-  access by design, so use the Hetzner Console (web terminal) and read
-  `/var/log/cloud-init-output.log`. Password login is disabled, so first
-  reset the root password from the Hetzner Console's Rescue tab.
+  access by design, so open the server's web console in the Hetzner Console
+  and read `/var/log/cloud-init-output.log`. No account has a password, so
+  reset the root password in the Hetzner Console first.
 - **DNS error for the hostname:** a non-CNAME record with the same name already exists in the zone; remove it.
 
 ## Files
@@ -178,5 +179,8 @@ explicitly.
   and answers through the proxy without redirect loops.
 - Cloudflare and Hetzner API calls were checked against the current API
   documentation.
+- `deploy.sh` (fresh run and re-run) and `destroy.sh` were run end to end
+  against a local fake of both APIs: every call is made in the right order,
+  a re-run creates nothing new, and destroy removes everything.
 - **Not yet done: a real end-to-end deployment** against live Hetzner and
   Cloudflare accounts.
