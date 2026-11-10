@@ -1,0 +1,70 @@
+# Runs on the server in /opt/ghost. Values come from /opt/ghost/.env,
+# which is generated on the server at first boot (see cloud-init.yaml.tpl).
+name: ghost
+
+services:
+  ghost:
+    image: ${GHOST_IMAGE}
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      url: ${GHOST_URL}
+      database__client: mysql
+      database__connection__host: db
+      database__connection__user: ghost
+      database__connection__password: ${DB_PASSWORD}
+      database__connection__database: ghost
+    volumes:
+      - ghost-content:/var/lib/ghost/content
+
+  # The tunnel delivers plain HTTP to this machine after Cloudflare has
+  # terminated HTTPS. Ghost redirects forever unless it is told the visitor
+  # used HTTPS, so this proxy states it explicitly instead of relying on
+  # which headers the tunnel happens to forward.
+  proxy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on:
+      - ghost
+    command: >
+      caddy reverse-proxy --from :8080 --to ghost:2368
+      --header-up "X-Forwarded-Proto: https"
+    # Loopback only: reachable from outside solely via the tunnel.
+    ports:
+      - "127.0.0.1:8080:8080"
+
+  db:
+    image: mysql:8.0
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+      MYSQL_DATABASE: ghost
+      MYSQL_USER: ghost
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - db-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p$$MYSQL_ROOT_PASSWORD --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+
+  # Outbound-only connection to Cloudflare. Host networking lets it reach
+  # the proxy (localhost:8080) and sshd (localhost:22), which both listen on
+  # loopback only.
+  cloudflared:
+    image: ${CLOUDFLARED_IMAGE}
+    restart: unless-stopped
+    network_mode: host
+    command: tunnel --no-autoupdate run
+    environment:
+      TUNNEL_TOKEN: ${TUNNEL_TOKEN}
+    profiles: ["tunnel"]
+
+volumes:
+  ghost-content:
+  db-data:
