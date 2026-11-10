@@ -6,6 +6,9 @@ ports open at all**: not 22, not 80, not 443. The blog and SSH are reachable
 only through the tunnel, and SSH additionally sits behind a Cloudflare Access
 login.
 
+> **Status:** statically verified and tested locally, but not yet run against
+> live Hetzner and Cloudflare accounts. Details in [How this was tested](#how-this-was-tested).
+
 ```mermaid
 flowchart LR
     Visitor["Blog visitor"] -- "HTTPS" --> CF
