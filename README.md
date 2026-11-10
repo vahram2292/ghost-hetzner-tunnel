@@ -170,6 +170,7 @@ explicitly.
 | [server/cloud-init.yaml.tpl](./server/cloud-init.yaml.tpl) | First-boot configuration of the server |
 | [server/docker-compose.yml](./server/docker-compose.yml) | Ghost, MySQL, proxy, cloudflared |
 | [.env.example](./.env.example) | Configuration template |
+| [docs/ai-conversations](./docs/ai-conversations/task-2-ghost-deploy.md) | The conversation with the AI tool used to build this |
 
 ## How this was tested
 
